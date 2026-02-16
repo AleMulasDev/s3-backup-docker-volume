@@ -1,0 +1,49 @@
+# =============================================================================
+# Example docker-compose.yml
+#
+# This shows how to add the s3-backup sidecar to any existing service.
+# The backup container mounts the same named volume as your app (read-only)
+# and uploads compressed tar archives to S3 on a cron schedule.
+# =============================================================================
+
+services:
+  # -------------------------------------------------------------------------
+  # Your application (example: a simple web app with persistent data)
+  # -------------------------------------------------------------------------
+  app:
+    image: your-app-image:latest
+    volumes:
+      - app-data:/data
+
+  # -------------------------------------------------------------------------
+  # S3 Backup sidecar — just add this to any docker-compose file
+  # -------------------------------------------------------------------------
+  backup:
+    build: https://github.com/user/s3-backup-docker-volume.git
+    # Or use a pre-built image:
+    # image: ghcr.io/user/s3-backup-docker-volume:latest
+    volumes:
+      - app-data:/backup/data:ro           # Mount the volume you want to back up (read-only)
+    environment:
+      # --- Required -------------------------------------------
+      BACKUP_PATH: /backup/data             # Path inside this container to back up
+      S3_ENDPOINT: https://s3.amazonaws.com # S3-compatible endpoint
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}       # From .env file or shell
+      S3_SECRET_KEY: ${S3_SECRET_KEY}       # From .env file or shell
+      S3_BUCKET: my-backups                 # Bucket name
+
+      # --- Optional (shown with defaults) ---------------------
+      # S3_REGION: us-east-1                # S3 region
+      # S3_PROVIDER: Minio                  # rclone provider: AWS, Minio, Wasabi, B2, Cloudflare, etc.
+      # S3_PATH: /                          # Path prefix inside the bucket
+      # BACKUP_CRON: "0 2 * * *"           # Cron schedule (default: 2 AM UTC daily)
+      # BACKUP_PREFIX: app-backup           # Archive filename prefix
+      # BACKUP_RETENTION_DAYS: 30           # Delete backups older than N days (0 = keep all)
+      # EXCLUDE_REGEX: "\\.log$|\\.tmp$"    # Regex for files to exclude
+      # ENCRYPTION_PASSWORD: my-secret      # Enable client-side encryption
+      # ENCRYPTION_SALT: my-salt            # Optional salt for encryption
+      # TZ: UTC                             # Container timezone
+    restart: unless-stopped
+
+volumes:
+  app-data:
