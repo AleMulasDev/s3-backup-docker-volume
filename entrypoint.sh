@@ -124,17 +124,9 @@ fi
 # ---------------------------------------------------------------------------
 CRONTAB_FILE="/tmp/crontab"
 
-# Add environment variables to crontab
+# Supercronic inherits the exported environment from this process,
+# so we only need the cron schedule line.
 cat > "${CRONTAB_FILE}" <<EOF
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-RCLONE_CONFIG=${RCLONE_CONFIG}
-RCLONE_REMOTE=${RCLONE_REMOTE}
-BACKUP_PATH=${BACKUP_PATH}
-BACKUP_PREFIX=${BACKUP_PREFIX}
-BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS}
-EXCLUDE_REGEX=${EXCLUDE_REGEX:-}
-
 ${BACKUP_CRON} /scripts/backup.sh
 EOF
 
