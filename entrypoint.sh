@@ -120,10 +120,24 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Generate crontab
+# Generate crontab with environment variables
 # ---------------------------------------------------------------------------
 CRONTAB_FILE="/tmp/crontab"
-echo "${BACKUP_CRON} /scripts/backup.sh" > "${CRONTAB_FILE}"
+
+# Add environment variables to crontab
+cat > "${CRONTAB_FILE}" <<EOF
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+RCLONE_CONFIG=${RCLONE_CONFIG}
+RCLONE_REMOTE=${RCLONE_REMOTE}
+BACKUP_PATH=${BACKUP_PATH}
+BACKUP_PREFIX=${BACKUP_PREFIX}
+BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS}
+EXCLUDE_REGEX=${EXCLUDE_REGEX:-}
+
+${BACKUP_CRON} /scripts/backup.sh
+EOF
+
 echo "INFO: Crontab generated: ${BACKUP_CRON} /scripts/backup.sh"
 
 # ---------------------------------------------------------------------------
