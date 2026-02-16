@@ -138,10 +138,13 @@ EXCLUDE_REGEX=${EXCLUDE_REGEX:-}
 ${BACKUP_CRON} /scripts/backup.sh
 EOF
 
+# Strip any Windows CRLF that may leak from heredoc
+sed -i 's/\r$//' "${CRONTAB_FILE}"
+
 echo "INFO: Crontab generated: ${BACKUP_CRON} /scripts/backup.sh"
 
 # ---------------------------------------------------------------------------
 # Start supercronic
 # ---------------------------------------------------------------------------
 echo "INFO: Starting supercronic..."
-exec supercronic "${CRONTAB_FILE}"
+exec /usr/local/bin/supercronic "${CRONTAB_FILE}"
