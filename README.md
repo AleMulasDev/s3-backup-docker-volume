@@ -60,7 +60,8 @@ cp .env.example .env
 docker compose up -d
 ```
 
-The backup container will start and wait for the cron schedule. To test immediately:
+The backup container will start and wait for the cron schedule. To run a backup immediately on
+startup, set `BACKUP_ON_START=true`. To test manually:
 
 ```bash
 docker compose exec backup /scripts/backup.sh
@@ -85,6 +86,8 @@ docker compose exec backup /scripts/backup.sh
 | `ENCRYPTION_PASSWORD` | No | — | Enables client-side encryption |
 | `ENCRYPTION_SALT` | No | — | Additional salt for encryption |
 | `TZ` | No | `UTC` | Container timezone |
+| `BACKUP_ON_START` | No | `false` | Run a backup immediately on container start |
+| `BACKUP_ONCE` | No | `false` | Exit after the first backup completes |
 
 ## S3 Provider Presets
 
@@ -300,6 +303,33 @@ To trigger a backup immediately without waiting for cron:
 
 ```bash
 docker compose exec backup /scripts/backup.sh
+```
+
+## One-shot Backup
+
+Useful in CI/CD pipelines, Kubernetes Jobs, or any context where you want a single backup to run and the container to exit on completion. Set both flags:
+
+```yaml
+backup:
+  build: https://github.com/user/s3-backup-docker-volume.git
+  volumes:
+    - app-data:/backup/data:ro
+  environment:
+    BACKUP_PATH: /backup/data
+    S3_ENDPOINT: https://s3.amazonaws.com
+    S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+    S3_SECRET_KEY: ${S3_SECRET_KEY}
+    S3_BUCKET: my-backups
+    BACKUP_ON_START: "true"
+    BACKUP_ONCE: "true"
+  restart: "no"   # Do not restart after one-shot completes
+```
+
+To run a backup on every container start and then continue on the cron schedule (without exiting):
+
+```yaml
+    BACKUP_ON_START: "true"
+    # BACKUP_ONCE not set (defaults to false)
 ```
 
 ## Architecture

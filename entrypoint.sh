@@ -31,6 +31,8 @@ BACKUP_CRON="${BACKUP_CRON:-0 2 * * *}"
 BACKUP_PREFIX="${BACKUP_PREFIX:-backup}"
 BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
 TZ="${TZ:-UTC}"
+BACKUP_ON_START="${BACKUP_ON_START:-false}"
+BACKUP_ONCE="${BACKUP_ONCE:-false}"
 
 # ---------------------------------------------------------------------------
 # Generate rclone config
@@ -107,6 +109,8 @@ echo "  Encryption:       $([ -n "${ENCRYPTION_PASSWORD:-}" ] && echo 'enabled' 
 echo "  Exclude regex:    ${EXCLUDE_REGEX:-<none>}"
 echo "  Timezone:         ${TZ}"
 echo "  Rclone remote:    ${RCLONE_REMOTE}"
+echo "  Backup on start:  ${BACKUP_ON_START}"
+echo "  Backup once:      ${BACKUP_ONCE}"
 echo "====================================================="
 
 # ---------------------------------------------------------------------------
@@ -120,20 +124,47 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Generate crontab with environment variables
+# Optional: run backup immediately on start
+# ---------------------------------------------------------------------------
+if [ "${BACKUP_ON_START}" = "true" ] && [ "${BACKUP_ONCE}" = "true" ]; then
+    echo "INFO: BACKUP_ON_START + BACKUP_ONCE: running one-shot backup and exiting."
+    /scripts/backup.sh
+    exit 0
+fi
+
+if [ "${BACKUP_ON_START}" = "true" ]; then
+    echo "INFO: BACKUP_ON_START=true: running immediate backup before starting scheduler."
+    /scripts/backup.sh
+fi
+
+# ---------------------------------------------------------------------------
+# Generate crontab
 # ---------------------------------------------------------------------------
 CRONTAB_FILE="/tmp/crontab"
 
-# Supercronic inherits the exported environment from this process,
-# so we only need the cron schedule line.
-cat > "${CRONTAB_FILE}" <<EOF
+if [ "${BACKUP_ONCE}" = "true" ]; then
+    # Write a one-shot wrapper: runs backup.sh, then kills supercronic (PID 1) on success
+    WRAPPER="/tmp/backup_once_wrapper.sh"
+    cat > "${WRAPPER}" <<'EOF'
+#!/bin/bash
+/scripts/backup.sh && kill -TERM 1
+EOF
+    chmod +x "${WRAPPER}"
+    sed -i 's/\r$//' "${WRAPPER}"
+    cat > "${CRONTAB_FILE}" <<EOF
+${BACKUP_CRON} ${WRAPPER}
+EOF
+    echo "INFO: BACKUP_ONCE=true: container will exit after first successful backup."
+else
+    cat > "${CRONTAB_FILE}" <<EOF
 ${BACKUP_CRON} /scripts/backup.sh
 EOF
+fi
 
 # Strip any Windows CRLF that may leak from heredoc
 sed -i 's/\r$//' "${CRONTAB_FILE}"
 
-echo "INFO: Crontab generated: ${BACKUP_CRON} /scripts/backup.sh"
+echo "INFO: Crontab: ${BACKUP_CRON} $([ "${BACKUP_ONCE}" = "true" ] && echo "${WRAPPER}" || echo "/scripts/backup.sh")"
 
 # ---------------------------------------------------------------------------
 # Start supercronic

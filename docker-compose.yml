@@ -43,7 +43,27 @@ services:
       # ENCRYPTION_PASSWORD: my-secret      # Enable client-side encryption
       # ENCRYPTION_SALT: my-salt            # Optional salt for encryption
       # TZ: UTC                             # Container timezone
+      # BACKUP_ON_START: "false"            # Run backup immediately on startup
+      # BACKUP_ONCE: "false"                # Exit after first backup (for CI/CD or one-shot mode)
     restart: unless-stopped
 
 volumes:
   app-data:
+
+# =============================================================================
+# One-shot backup example (for CI/CD or init containers)
+# =============================================================================
+#
+# backup-once:
+#   build: https://github.com/user/s3-backup-docker-volume.git
+#   volumes:
+#     - app-data:/backup/data:ro
+#   environment:
+#     BACKUP_PATH: /backup/data
+#     S3_ENDPOINT: https://s3.amazonaws.com
+#     S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+#     S3_SECRET_KEY: ${S3_SECRET_KEY}
+#     S3_BUCKET: my-backups
+#     BACKUP_ON_START: "true"              # Run immediately on startup
+#     BACKUP_ONCE: "true"                  # Exit after first backup
+#   restart: "no"                           # Do not restart after completion
