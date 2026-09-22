@@ -80,7 +80,9 @@ rm -f "${ARCHIVE_PATH}"
 if [ "${BACKUP_RETENTION_DAYS:-0}" -gt 0 ]; then
     echo "INFO: Applying retention policy: deleting backups older than ${BACKUP_RETENTION_DAYS} days..."
 
-    CUTOFF_EPOCH="$(date -u -d "-${BACKUP_RETENTION_DAYS} days" +%s 2>/dev/null || date -u -v-${BACKUP_RETENTION_DAYS}d +%s 2>/dev/null)"
+    # Alpine's BusyBox date cannot parse relative dates or BSD's -v option.
+    # Calculate the UTC cutoff directly, treating each retention day as 86400 seconds.
+    CUTOFF_EPOCH="$(( $(date -u +%s) - 10#${BACKUP_RETENTION_DAYS} * 86400 ))"
 
     # List all files in the remote path
     REMOTE_FILES="/tmp/backup/remote_files.txt"
